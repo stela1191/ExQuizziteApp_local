@@ -30,7 +30,7 @@ class FlashcardApp:
         }
 
         self.current_theme = self.settings.get("theme", "Amber")
-        self.font = ("Courier New", 14)
+        self.font = ("Courier New", 16)
         self.correct = 0
         self.incorrect = 0
         self.start_index = 0
@@ -141,7 +141,7 @@ class FlashcardApp:
             fg=self.label_fg,
             justify="left"
         )
-        self.question_label.pack(padx=10, pady=10, fill="both", expand=True)
+        self.question_label.pack(padx=10, pady=10, fill="both", expand=True) 
 
         self.control_frame = tk.Frame(self.master, bg=self.bg)
         self.control_frame.pack(pady=10)
@@ -176,11 +176,15 @@ class FlashcardApp:
         self.jump_button = tk.Button(self.secondary_frame, text="Jump to Question", command=self.jump_to_question, font=self.font, relief=tk.GROOVE)
         self.jump_button.grid(row=0, column=4, padx=5)
 
-        self.theme_button = tk.Button(self.secondary_frame, text="Switch Theme", command=self.switch_theme, font=self.font, relief=tk.GROOVE)
-        self.theme_button.grid(row=0, column=5, padx=5)
+        # New frame for theme and sound buttons
+        self.settings_frame = tk.Frame(self.master, bg=self.bg)
+        self.settings_frame.pack(pady=5)
 
-        self.sound_button = tk.Button(self.secondary_frame, text=f"Sound: {'ON' if self.sound_on else 'OFF'}", command=self.toggle_sound, font=self.font, relief=tk.GROOVE)
-        self.sound_button.grid(row=0, column=6, padx=5)
+        self.theme_button = tk.Button(self.settings_frame, text="Switch Theme", command=self.switch_theme, font=self.font, relief=tk.GROOVE)
+        self.theme_button.grid(row=0, column=0, padx=20)
+
+        self.sound_button = tk.Button(self.settings_frame, text=f"Sound: {'ON' if self.sound_on else 'OFF'}", command=self.toggle_sound, font=self.font, relief=tk.GROOVE)
+        self.sound_button.grid(row=0, column=1, padx=20)
 
         self.stats_label = tk.Label(self.master, text="Correct: 0 | Incorrect: 0", font=self.font)
         self.stats_label.pack(pady=10)
