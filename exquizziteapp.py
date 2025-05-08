@@ -48,6 +48,9 @@ class FlashcardApp:
         self.current_card = None
         self.showing_answer = False
 
+        self.card_index = -1
+        self.history = []
+
     def play_sound(self, filename):
         if self.sound_on:
             base_path = os.path.dirname(os.path.abspath(__file__))
@@ -58,8 +61,6 @@ class FlashcardApp:
                     sound.play()
                 except Exception as e:
                     print(f"Error playing sound {full_path}: {e}")
-            else:
-                print(f"File not found: {full_path}")
 
     def toggle_sound(self):
         self.sound_on = not self.sound_on
@@ -93,8 +94,6 @@ class FlashcardApp:
         path = self.settings.get("last_flashcard_path")
         if os.path.exists(path):
             self.load_file(path)
-        else:
-            print("No valid saved path.")
 
     def load_file(self, path):
         with open(path, newline='', encoding='utf-8') as file:
@@ -141,7 +140,7 @@ class FlashcardApp:
             fg=self.label_fg,
             justify="left"
         )
-        self.question_label.pack(padx=10, pady=10, fill="both", expand=True) 
+        self.question_label.pack(padx=10, pady=10, fill="both", expand=True)
 
         self.control_frame = tk.Frame(self.master, bg=self.bg)
         self.control_frame.pack(pady=10)
@@ -152,11 +151,18 @@ class FlashcardApp:
         self.next_button = tk.Button(self.control_frame, text="Next", command=self.next_card, state=tk.DISABLED, font=self.font, relief=tk.GROOVE)
         self.next_button.grid(row=0, column=1, padx=5, pady=5)
 
+        self.prev_button = tk.Button(self.control_frame, text="Previous", command=self.prev_card, state=tk.DISABLED, font=self.font, relief=tk.GROOVE)
+        self.prev_button.grid(row=0, column=2, padx=5, pady=5)
+
         self.correct_button = tk.Button(self.control_frame, text="Correct", command=self.mark_correct, state=tk.DISABLED, font=self.font, relief=tk.GROOVE)
         self.correct_button.grid(row=0, column=2, padx=5, pady=5)
 
         self.incorrect_button = tk.Button(self.control_frame, text="Incorrect", command=self.mark_incorrect, state=tk.DISABLED, font=self.font, relief=tk.GROOVE)
         self.incorrect_button.grid(row=0, column=3, padx=5, pady=5)
+
+        # shift correct/incorrect buttons right
+        self.correct_button.grid_configure(column=3)
+        self.incorrect_button.grid_configure(column=4)
 
         self.secondary_frame = tk.Frame(self.master, bg=self.bg)
         self.secondary_frame.pack(pady=5)
@@ -176,7 +182,6 @@ class FlashcardApp:
         self.jump_button = tk.Button(self.secondary_frame, text="Jump to Question", command=self.jump_to_question, font=self.font, relief=tk.GROOVE)
         self.jump_button.grid(row=0, column=4, padx=5)
 
-        # New frame for theme and sound buttons
         self.settings_frame = tk.Frame(self.master, bg=self.bg)
         self.settings_frame.pack(pady=5)
 
@@ -205,7 +210,8 @@ class FlashcardApp:
         self.display_frame.configure(bg=self.label_bg)
         self.question_label.configure(bg=self.label_bg, fg=self.label_fg)
         widgets = [
-            self.answer_button, self.next_button,
+            self.answer_button, self.prev_button,
+            self.next_button,
             self.correct_button, self.incorrect_button,
             self.load_button, self.last_button,
             self.shuffle_button, self.ordered_button,
@@ -215,17 +221,23 @@ class FlashcardApp:
         ]
         for widget in widgets:
             widget.configure(bg=self.bg, fg=self.fg)
-        self.control_frame.configure(bg=self.bg)
-        self.secondary_frame.configure(bg=self.bg)
+            self.control_frame.configure(bg=self.bg)
+            self.secondary_frame.configure(bg=self.bg)
+            self.settings_frame.configure(bg=self.bg)
+
 
     def next_card(self):
         if self.remaining_cards:
             self.current_card = self.remaining_cards.pop(0)
+            self.history.append(self.current_card)
+            self.card_index = len(self.history) - 1
             self.question_label.config(text=self.current_card[0])
+            self.answer_button.config(text="Show Answer")
             self.showing_answer = False
             self.correct_button.config(state=tk.DISABLED)
             self.incorrect_button.config(state=tk.DISABLED)
             self.answer_button.config(state=tk.NORMAL)
+            self.prev_button.config(state=tk.NORMAL if self.card_index > 0 else tk.DISABLED)
             self.update_progress()
         else:
             self.question_label.config(text="Koniec kartičiek!")
@@ -233,7 +245,20 @@ class FlashcardApp:
             self.next_button.config(state=tk.DISABLED)
             self.correct_button.config(state=tk.DISABLED)
             self.incorrect_button.config(state=tk.DISABLED)
+            self.prev_button.config(state=tk.DISABLED)
             self.play_sound("all_done.wav")
+
+    def prev_card(self):
+        if self.card_index > 0:
+            self.card_index -= 1
+            self.current_card = self.history[self.card_index]
+            self.question_label.config(text=self.current_card[0])
+            self.answer_button.config(text="Show Answer")
+            self.showing_answer = False
+            self.correct_button.config(state=tk.DISABLED)
+            self.incorrect_button.config(state=tk.DISABLED)
+            self.answer_button.config(state=tk.NORMAL)
+            self.prev_button.config(state=tk.NORMAL if self.card_index > 0 else tk.DISABLED)
 
     def mark_correct(self):
         self.correct += 1
@@ -249,11 +274,18 @@ class FlashcardApp:
 
     def show_answer(self):
         if self.current_card:
-            self.question_label.config(text=self.current_card[1])
-            self.showing_answer = True
-            self.correct_button.config(state=tk.NORMAL)
-            self.incorrect_button.config(state=tk.NORMAL)
-            self.answer_button.config(state=tk.DISABLED)
+            if not self.showing_answer:
+                self.question_label.config(text=self.current_card[1])
+                self.answer_button.config(text="Show Question")
+                self.showing_answer = True
+                self.correct_button.config(state=tk.NORMAL)
+                self.incorrect_button.config(state=tk.NORMAL)
+            else:
+                self.question_label.config(text=self.current_card[0])
+                self.answer_button.config(text="Show Answer")
+                self.showing_answer = False
+                self.correct_button.config(state=tk.DISABLED)
+                self.incorrect_button.config(state=tk.DISABLED)
 
     def update_stats(self):
         self.stats_label.config(text=f"Correct: {self.correct} | Incorrect: {self.incorrect}")
